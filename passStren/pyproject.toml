@@ -1,5 +1,5 @@
 [project]
-name = "Asi-11c-Sprint1"
+name = "asi_11c_sprint1"
 version = "0.0.1"
 description = "1st Sprint from 11cGroup"
 authors = [
@@ -9,10 +9,17 @@ authors = [
     {name = "DAkmurat", email = "s25674@pejot.edu.pl"}
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "numpy>=2.0.2",
+    "pandas>=2.3.3",
+    "scikit-learn>=1.6.1",
+]
 
 [dependency-groups]
 dev = [
     "dvc>=3.64.0",
-    "jupyterlab>=4.5.0",
+    "jupyterlab>=4.5.0"
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
