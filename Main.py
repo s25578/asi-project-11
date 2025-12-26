@@ -70,3 +70,32 @@ async def continue_train(
     metrics = do_training(df, new_model_name, old)
 
     return {"metrics": metrics, "new_model": new_model_name}
+
+
+@app.post("/predict")
+async def predict(
+        model_name: str = Form(...),
+        input: UploadFile = File(...)
+):
+    if not model_name.strip():
+        raise HTTPException(status_code=400, detail="model name required")
+
+    if not input.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="csv only")
+
+    path = os.path.join(MODEL_DIR, f"{model_name}.joblib")
+    if not os.path.exists(path):
+        available = [f.replace(".joblib", "") for f in os.listdir(MODEL_DIR) if f.endswith(".joblib")]
+        raise HTTPException(status_code=404, detail=f"no such model. available: {available}")
+
+    tmp = f"pred_{input.filename}"
+    with open(tmp, "wb") as f:
+        shutil.copyfileobj(input.file, f)
+
+    data = pd.read_csv(tmp)
+    os.remove(tmp)
+
+    model = joblib.load(path)
+    predictions = model.predict(data).tolist()
+
+    return {"predictions": predictions}
