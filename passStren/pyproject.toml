@@ -1,18 +1,22 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "asi_11c_sprint1"
 version = "0.0.1"
-description = "1st Sprint from 11cGroup"
+description = "11 project"
 authors = [
-    {name = "JMordal", email = "s26839@pejot.edu.pl"},
-    {name = "KTomala", email = "s27560@pejot.edu.pl"},
-    {name = "ODinul", email = "s25578@pejot.edu.pl"},
-    {name = "DAkmurat", email = "s25674@pejot.edu.pl"}
+    {name = "xxxxx", email = "xxxxx@pejot.edu.pl"},
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.12"
 dependencies = [
-    "numpy>=2.0.2",
-    "pandas>=2.3.3",
-    "scikit-learn>=1.6.1",
+    "numpy>=1.23.0",
+    "pandas>=2.0.0,<2.2.0",
+    "scikit-learn>=1.3.0",
+    "pycaret>=3.3.0",
+    "optuna>=3.0.0",
+    "typer>=0.9.0",
 ]
 
 [dependency-groups]
@@ -20,6 +24,9 @@ dev = [
     "dvc>=3.64.0",
     "jupyterlab>=4.5.0"
 ]
+
+[project.scripts]
+passstren = "passstren.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
