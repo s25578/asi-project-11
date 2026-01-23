@@ -1,0 +1,107 @@
+---
+- name: Configure environment
+  hosts: webservers
+  strategy: free
+  become: true
+  tasks:
+    - name: Install git
+      ansible.builtin.package:
+        name: git
+        state: present
+
+    - name: Install pip on Alpine
+      ansible.builtin.package:
+        name: py3-pip
+        state: present
+      when: ansible_facts['os_family'] | lower == 'alpine'
+
+    - name: Install modules dependencies
+      ansible.builtin.pip:
+        name: requests==2.28.1
+        state: present
+
+- name: Configure registry
+  hosts: webservers:localhost
+  gather_facts: false
+  become: true
+  vars:
+    certs_dir: /etc/docker/certs.d/{{ registry_url }}
+  tasks:
+    - name: Create certificates directory
+      ansible.builtin.file:
+        path: "{{ certs_dir }}"
+        mode: u=rwx,g=rx,o=rx
+        state: directory
+
+    - name: Copy certificates
+      ansible.builtin.copy:
+        src: ../certs/domain.crt
+        dest: "{{ certs_dir }}/ca.crt"
+        mode: u=r,g=r,o=r
+
+    - name: Login into registry
+      community.docker.docker_login:
+        registry_url: "{{ registry_url }}"
+        username: "{{ registry_username }}"
+        password: "{{ registry_password }}"
+        state: present
+
+- name: Deploy app
+  hosts: webservers
+  gather_facts: false
+  vars:
+    app_dir: app
+  tasks:
+    - name: Pull from git on control node
+      ansible.builtin.git: &git-clone
+        repo: https://bitbucket.org/shkroba/simple-http.git
+        dest: "{{ app_dir }}"
+        depth: 1
+        single_branch: true
+        accept_newhostkey: true
+        force: true
+      run_once: true
+      delegate_to: localhost
+      register: pull_result
+
+    - when: pull_result is changed
+      block:
+        - run_once: true
+          delegate_to: localhost
+          block:
+            - name: Build images
+              ansible.builtin.command:
+                docker compose --project-directory {{ app_dir }} build
+
+            - name: Set image tags facts
+              vars:
+                compose: "{{ lookup('pipe', 'docker compose --project-directory ' + app_dir + ' convert') | from_yaml }}"
+                image_tags: "{{ compose.services | dict2items | map(attribute='value') | map(attribute='image') }}"
+              ansible.builtin.set_fact:
+                image_tags: "{{ image_tags }}"
+
+            - name: Push images
+              community.docker.docker_image:
+                name: "{{ item }}"
+                repository: "{{ registry_url + '/' + item }}"
+                push: true
+                source: local
+                state: present
+              loop: "{{ image_tags }}"
+
+        - name: Pull images
+          community.docker.docker_image:
+            name: "{{ registry_url + '/' + item }}"
+            source: pull
+            state: present
+          loop: "{{ image_tags }}"
+          become: true
+
+        - name: Pull from git on managed nodes
+          ansible.builtin.git:
+            <<: *git-clone
+
+        - name: Deploy
+          ansible.builtin.command:
+            docker compose --project-directory {{ app_dir }} up --detach
+          become: true

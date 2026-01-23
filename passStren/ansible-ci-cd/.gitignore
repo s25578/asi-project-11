@@ -1,0 +1,13 @@
+*.tar
+
+.ansible/
+*.retry
+
+
+auth/
+certs/
+registry-certs/
+
+.env
+
+dockerd/tmp/
