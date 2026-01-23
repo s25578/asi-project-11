@@ -1,0 +1,68 @@
+---
+# ETAP 0: Przygotowanie kontrolera (Twoje wymaganie dot. instalacji)
+- name: Prepare Ansible Controller (app)
+  hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Ensure python3 and requests are installed on controller
+      ansible.builtin.package:
+        name:
+          - py3-pip
+          - py3-requests
+        state: present
+      # To zadanie wykona się tylko w kontenerze app (localhost)
+
+# ETAP 1: Build & Export (zgodnie z wymaganiami)
+- name: Build and Export Image
+  hosts: localhost
+  connection: local
+  vars:
+    image_name: "test:123"
+    image_path: "myimage.tar"
+  tasks:
+    - name: Build image from Dockerfile
+      community.docker.docker_image:
+        build:
+          path: /home/ansible/dockerd
+        name: "{{ image_name }}"
+        source: build
+
+    - name: Export image to tarball
+      community.docker.docker_image_export:
+        name: "{{ image_name }}"
+        path: "/home/ansible/{{ image_path }}"
+
+# ETAP 2: Deployment na węzły (node1, node2)
+- name: Copy and Start Application
+  hosts: dev
+  become: true
+  vars:
+    image_name: "test:123"
+    image_path: "myimage.tar"
+  tasks:
+    - name: Install dependencies on Node
+      ansible.builtin.package:
+        name:
+          - python3
+          - py3-requests
+        state: present
+
+    - name: Copy built image to the remote
+      ansible.builtin.copy:
+        src: "/home/ansible/{{ image_path }}"
+        dest: "/tmp/{{ image_path }}"
+        mode: '0644'
+
+    - name: Load image from tar file
+      community.docker.docker_image_load:
+        path: "/tmp/{{ image_path }}"
+
+    - name: Start container
+      community.docker.docker_container:
+        name: my-asi-app
+        image: "{{ image_name }}"
+        state: started
+        recreate: true
+        ports:
+          - "6379:6379"
