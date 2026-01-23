@@ -1,0 +1,14 @@
+.git
+.gitignore
+
+.venv
+__pycache__
+*.pyc
+
+.ipynb_checkpoints
+
+data/*.csv
+
+.env
+
+.ruff_cache
